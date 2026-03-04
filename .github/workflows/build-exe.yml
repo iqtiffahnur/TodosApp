@@ -10,36 +10,62 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    # 1) Checkout source
     - name: Checkout repo
       uses: actions/checkout@v4
 
+    # 2) Setup .NET 8 SDK
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
+    # 3) Setup Node (for React UI)
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: src/todos-ui/package-lock.json
 
+    # 4) Install UI deps and build UI
     - name: Install UI dependencies
       working-directory: src/todos-ui
-      run: npm install
+      run: npm ci
 
     - name: Build UI
       working-directory: src/todos-ui
       run: npm run build
 
+    # 5) Copy UI build into API/wwwroot (safe even if wwwroot exists)
     - name: Copy UI into API wwwroot
+      shell: pwsh
       run: |
-        New-Item -ItemType Directory -Path src/Todos.Api/wwwroot -Force
-        robocopy src/todos-ui/dist src/Todos.Api/wwwroot /MIR
+        New-Item -ItemType Directory -Path "src/Todos.Api/wwwroot" -Force | Out-Null
+        robocopy "src/todos-ui/dist" "src/Todos.Api/wwwroot" /MIR /NFL /NDL /NJH /NJS
+        # robocopy returns 0..3 for success; treat those as success, otherwise fail
+        if ($LASTEXITCODE -le 3) { exit 0 } else { exit $LASTEXITCODE }
 
+    # 6) Restore .NET (solution or project)
+    - name: Restore .NET
+      run: dotnet restore
+
+    # 7) (Optional) Run tests - uncomment if you want CI tests
+    # - name: Test
+    #   run: dotnet test --configuration Release --no-build
+
+    # 8) Publish single-file, self-contained EXE to ./publish
     - name: Publish .NET API (single-file EXE)
       run: |
-        dotnet publish src/Todos.Api/Todos.Api.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+        dotnet publish src/Todos.Api/Todos.Api.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -o publish
 
+    # 9) Upload the entire publish folder as an artifact
     - name: Upload EXE as artifact
       uses: actions/upload-artifact@v4
       with:
