@@ -1,0 +1,25 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Node (React)
+src/todos-ui/node_modules/
+src/todos-ui/dist/
+
+# Publish outputs & zips
+out/
+**/publish/
+publish.zip
+
+# SQLite runtime DB
+*.db
+
+# Certificates
+*.pfx
+*.cer
+
+# Logs
+*.log
