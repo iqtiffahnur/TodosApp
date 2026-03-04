@@ -1,0 +1,47 @@
+name: Build .NET EXE
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install UI dependencies
+      working-directory: src/todos-ui
+      run: npm install
+
+    - name: Build UI
+      working-directory: src/todos-ui
+      run: npm run build
+
+    - name: Copy UI into API wwwroot
+      run: |
+        mkdir src/Todos.Api/wwwroot
+        robocopy src/todos-ui/dist src/Todos.Api/wwwroot /MIR
+
+    - name: Publish .NET API (single-file EXE)
+      run: |
+        dotnet publish src/Todos.Api/Todos.Api.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+    - name: Upload EXE as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: TodosExe
+        path: publish/
