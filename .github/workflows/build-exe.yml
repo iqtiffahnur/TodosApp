@@ -33,7 +33,7 @@ jobs:
 
     - name: Copy UI into API wwwroot
       run: |
-        mkdir src/Todos.Api/wwwroot
+        New-Item -ItemType Directory -Path src/Todos.Api/wwwroot -Force
         robocopy src/todos-ui/dist src/Todos.Api/wwwroot /MIR
 
     - name: Publish .NET API (single-file EXE)
